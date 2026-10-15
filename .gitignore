@@ -1,0 +1,20 @@
+# Secrets — never commit
+.streamlit/secrets.toml
+
+# Python artefacts
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Uploaded files cache
+uploads/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+
+# Google credentials
+*.json
