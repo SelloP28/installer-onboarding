@@ -386,8 +386,25 @@ def _render_installer_directory(supabase: Client) -> None:
 
         import pandas as pd
         df = pd.DataFrame(installers)
-        cols = [c for c in ["company_name", "email", "current_stage", "current_status", "status_reason", "access_token", "created_at"] if c in df.columns]
-        st.dataframe(df[cols], use_container_width=True)
+
+        # Build a clickable portal link from the same app_base_url secret
+        # gate_0.py already uses -- keeps both in sync by construction.
+        app_base = st.secrets.get("app_base_url", "http://localhost:8501")
+        df["portal_url"] = df["access_token"].apply(
+            lambda tok: f"{app_base}/?access_token={tok}" if tok else None
+        )
+
+        cols = [c for c in ["company_name", "email", "current_stage", "current_status",
+                             "status_reason", "portal_url", "created_at"] if c in df.columns]
+        st.dataframe(
+            df[cols],
+            use_container_width=True,
+            column_config={
+                "portal_url": st.column_config.LinkColumn(
+                    "Portal Access Link", display_text="🔗 Open Portal"
+                ),
+            },
+        )
     except Exception as exc:
         st.warning(f"Could not load installer directory: {exc}")
 
