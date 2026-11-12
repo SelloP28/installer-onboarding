@@ -16,6 +16,7 @@ from gates import gate_0 as gate_0_module
 from gates import stage_1 as stage_1_module
 from gates import stage_2 as stage_2_module
 from admin import render_admin_dashboard
+from token_utils import parse_access_token
 
 # ---------------------------------------------------------------------------
 # Page configuration — must be the very first Streamlit call
@@ -76,6 +77,28 @@ _bootstrap_session_state()
 # Sidebar — view switcher
 # ---------------------------------------------------------------------------
 
+def _handle_token_submit() -> None:
+    token = parse_access_token(st.session_state["token_input"])
+    if token is None or _get_installer_by_token(token) is None:
+        st.session_state["token_error"] = (
+            "Invalid or expired access token. Please check your link or contact HSE."
+        )
+        return
+
+    st.session_state["access_token"] = token
+    st.query_params["access_token"] = token
+    st.session_state["active_view"] = "installer"
+    st.session_state["nav_radio"] = "installer"
+    st.session_state["token_error"] = None
+
+
+def _handle_token_clear() -> None:
+    st.session_state["access_token"] = None
+    if "access_token" in st.query_params:
+        del st.query_params["access_token"]
+    st.session_state["token_error"] = None
+
+
 def render_sidebar() -> str:
     """
     Render the sidebar navigation and return the selected view name.
@@ -103,7 +126,34 @@ def render_sidebar() -> str:
             key="nav_radio",
         )
 
-        st.session_state["active_view"] = view
+        if view == "installer":
+            st.markdown("---")
+            st.subheader("🔑 Access Token")
+            access_token = st.session_state.get("access_token")
+            if access_token:
+                installer = _get_installer_by_token(access_token)
+                company_name = (
+                    installer.get("company_name", "Unknown Company")
+                    if installer
+                    else "Application unavailable"
+                )
+                st.write(f"Company: {company_name}")
+                st.caption(f"Token: ••••••{access_token[-6:]}")
+                st.button(
+                    "Switch / clear token",
+                    on_click=_handle_token_clear,
+                )
+            else:
+                with st.form("token_form", clear_on_submit=True):
+                    st.text_input("Paste access link or token", key="token_input")
+                    st.form_submit_button(
+                        "Load Application",
+                        on_click=_handle_token_submit,
+                    )
+
+            token_error = st.session_state.get("token_error")
+            if token_error:
+                st.error(token_error)
 
         st.markdown("---")
         st.caption("HSE Compliance Portal v0.1.0")
